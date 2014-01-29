@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/com_facebook_blue"
+    android:padding="5dp" >
+
+    <LinearLayout
+        android:id="@+id/image_frame"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:background="@color/color_white"
+        android:orientation="vertical"
+        android:padding="3dip"
+        android:visibility="gone" >
+
+        <ImageView
+            android:id="@+id/profile_image"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/profile_image"
+            android:src="@drawable/ic_launcher"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        />
+
+    <TextView
+        android:id="@+id/lastname"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/image_frame"
+        android:layout_marginLeft="22dp"
+        android:layout_toRightOf="@+id/image_frame"
+        android:text="@string/last_name"
+        android:textColor="@color/color_white"
+        android:textSize="@dimen/name_size"
+        android:visibility="gone"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/firstname"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/lastname"
+        android:layout_alignLeft="@+id/lastname"
+        android:text="@string/first_name"
+        android:textColor="@color/color_white"
+        android:visibility="gone"
+        android:textSize="@dimen/name_size"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/locatefriends"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:textColor="@color/color_white"
+        android:textSize="9sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        android:layout_below="@+id/image_frame"
+        android:layout_marginTop="30dp"
+        android:text="@string/locate_friends"
+        android:drawableTop="@drawable/find_friends"
+         />
+
+</RelativeLayout>

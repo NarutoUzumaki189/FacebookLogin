@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">FacebookLogin</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="menu_settings">Settings</string>
+    <string name="app_id">1413378858902357</string>
+    <string name="profile_image">Profile Image</string>
+    <string name="first_name">firstname</string>
+    <string name="last_name">lastname</string>
+    <string name="log_out">Log Out</string>
+    <string name="locate_friends">Locate Friends</string>
+
+</resources>
