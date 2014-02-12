@@ -60,10 +60,11 @@ public class MainActivity extends FragmentActivity {
 
 	private void startProfileActivity()
 	{
+		finish();
 		setResult(RESULT_OK, null);
 		Intent intent = new Intent(MainActivity.this , ProfileActivity.class);
 		startActivity(intent);
-		finish();
+		
 	}
 
 }

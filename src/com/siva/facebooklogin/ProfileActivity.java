@@ -59,6 +59,7 @@ public class ProfileActivity extends Activity implements OnClickListener{
 		mProgressbar  = (ProgressBar)(findViewById(R.id.progressBar));
 		mImageFrame   = (LinearLayout)(findViewById(R.id.image_frame));
 		mLocateFriends = (Button)(findViewById(R.id.locatefriends));
+		
 		Session session = Session.getActiveSession();
 		Bundle nameBundle   = new Bundle();
 		nameBundle.putString("fields", "first_name,middle_name,last_name,picture.width(200).height(200)");
@@ -195,6 +196,7 @@ public class ProfileActivity extends Activity implements OnClickListener{
 
 	public static Bitmap getImage(String imageUrl)
 	{
+		long duration = System.currentTimeMillis();
 		Bitmap image = null;
 		InputStream in = null;
 		int response = -1;
@@ -224,7 +226,7 @@ public class ProfileActivity extends Activity implements OnClickListener{
 
 		BufferedInputStream bi = new BufferedInputStream(in);
 		image = BitmapFactory.decodeStream(bi);
-
+        Log.d("TimeTaken", ""+(System.currentTimeMillis()-duration));
 		return image;
 	}
 

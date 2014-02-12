@@ -1,6 +1,9 @@
 package com.siva.facebooklogin;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,10 +20,13 @@ import org.json.JSONObject;
 
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
+import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.util.Log;
@@ -46,7 +52,11 @@ public class MapActivity extends FragmentActivity {
 	private LatLng mLatLng;
 	private ArrayList<HashMap<String , Object>> mFreindsData;
 	private String mID = null;
+	private Dialog mDialog = null;
 	
+	private final int DOWNLOAD_DATA = 0;
+	private final int MAP_DATA      = 1;
+
 	HttpClient mClient = new DefaultHttpClient();
 
 	@Override
@@ -82,53 +92,55 @@ public class MapActivity extends FragmentActivity {
 
 		Bundle nameBundle   = new Bundle();
 		nameBundle.putString("fields", "friends.fields(id)");
-		
+
 
 		if(localsession.isOpened())
 		{
-			/*new Request(localsession, "me",nameBundle,HttpMethod.GET ,new Callback() {
-
-				@Override
-				public void onCompleted(Response response) {
-					// TODO Auto-generated method stub
-					
-
-				}
-
-			}).executeAsync();*/
+			//mPingImages.execute(null,localsession);
 			
-			mPingImages.execute(null,localsession);
+			Message msg = Message.obtain();
+			msg.what = DOWNLOAD_DATA;
+			downloadHandler.sendMessage(msg);
 			
 		}
 	}
-	
-	
-	private void showErrorDialog()
-	{
-		Builder builder = new AlertDialog.Builder(this);
-		builder.setMessage("Some Downloading Error")
-	       .setTitle("Error");
-		AlertDialog dialog = builder.create();
-		
-		dialog.show();
 
+
+	private void showErrorDialog(String error)
+	{
+
+		/*	if(mDialog == null)
+		{
+			mDialog = new Dialog(getBaseContext());
+		}
+       mDialog.setTitle(error);
+       mDialog.show();*/
 	}
-	
+
 	private JSONObject newMethod(String graphPath,Bundle inputBundle,String accessToken) throws ClientProtocolException,IOException,JSONException
 	{
 		JSONObject result = null;
 		String data = inputBundle.getString("fields");
-		String url = "http://graph.facebook.com/"+graphPath+"?fields=";
+		String url = "https://graph.facebook.com/"+graphPath+"?access_token="+accessToken+"&fields="+data;
 		Log.d("MapActivity","url::"+url);
 		HttpGet get = new HttpGet(url);
 		HttpResponse response = mClient.execute(get);
 		int resultCode = response.getStatusLine().getStatusCode();
-		
+
 		if(resultCode == 200)
 		{
-			
-			result = new JSONObject(response.getEntity().toString());
-			Log.d("MapActivity",""+result);
+			InputStream is = response.getEntity().getContent() ;
+			BufferedReader reader = new BufferedReader(new InputStreamReader(is,"UTF-8"));
+			StringBuilder sb = new StringBuilder();
+			String line = null;
+			while ((line = reader.readLine()) != null) {
+				sb.append(line + "\n");
+			}
+			is.close();
+			String resultString = sb.toString();
+
+			result = new JSONObject(resultString);
+			Log.d("MapActivity","result::"+result);
 			return result;
 		}
 		else
@@ -137,6 +149,113 @@ public class MapActivity extends FragmentActivity {
 			return null;
 		}
 	}
+	
+	private Handler downloadHandler = new Handler()
+	{
+
+		@Override
+		public void handleMessage(Message msg) {
+			// TODO Auto-generated method stub
+			
+			switch (msg.what)
+			{
+			case DOWNLOAD_DATA:
+				Thread thread = new Thread(new Runnable() {
+					
+					@Override
+					public void run() {
+						// TODO Auto-generated method stub
+						getInformation(Session.getActiveSession());
+					}
+				});
+				thread.start();
+				 break;
+			case MAP_DATA:
+				 Bundle dataBundle = msg.getData();
+				 LatLng position = dataBundle.getParcelable("location");
+				 BitmapDescriptor icon =  BitmapDescriptorFactory.fromBitmap((Bitmap) dataBundle.getParcelable("image"));
+				 mMap.addMarker(new MarkerOptions().position(position).icon(icon));
+				 
+				break;
+			}
+			
+		}
+		
+	};
+	
+	private void getInformation(Session session)
+	{
+		
+		Bundle nameBundle   = new Bundle();
+		nameBundle.putString("fields", "friends.fields(id)");
+
+		Bundle friendBundle = new Bundle();
+		friendBundle.putString("fields", "picture,location");
+
+		Bundle location = new Bundle();
+		location.putString("fields", "location");
+
+		try {
+			JSONArray friendsId   = newMethod("me",nameBundle,session.getAccessToken()).optJSONObject("friends").getJSONArray("data");
+
+            int length = friendsId.length();
+            
+			for(int i=0;i<length;i++ )
+			{
+				getResponse(newMethod((String)friendsId.getJSONObject(i).get("id"),  friendBundle,session.getAccessToken()),session,location);
+				
+			}
+
+		} catch (ClientProtocolException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			showErrorDialog("Protocol Error");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			showErrorDialog("IO Exception");
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			showErrorDialog("JSONException");
+		}
+
+
+		
+	}
+	
+	private void getResponse(JSONObject jsonObject,Session session,Bundle location) throws JSONException, ClientProtocolException, IOException
+	{
+		String url = jsonObject.optJSONObject("picture").optJSONObject("data").getString("url");
+		if(jsonObject.optJSONObject("location") != null)
+		{
+			//HashMap<String , Object> data = new HashMap<String,Object>();
+			String locationID = jsonObject.optJSONObject("location").getString("id");
+			LatLng position = getLocation(newMethod(locationID, location, session.getAccessToken()));
+			Bitmap icon = ProfileActivity.getImage(url);
+			Message msg = Message.obtain();
+			msg.what = MAP_DATA;
+			Bundle bundle = new Bundle();
+			bundle.putParcelable("image", icon);
+			bundle.putParcelable("location", position);
+			msg.setData(bundle);
+			downloadHandler.sendMessage(msg);
+		}
+		else
+		{
+
+		}
+
+	}
+	
+	private LatLng getLocation(JSONObject jsonObject) throws JSONException
+	{
+
+		String lat = jsonObject.optJSONObject("location").getString("latitude");
+		String lng = jsonObject.optJSONObject("location").getString("longitude");
+		mLatLng = new LatLng(Double.parseDouble(lat), Double.parseDouble(lng));
+		return mLatLng;
+	}
 
 	private class PinImages extends AsyncTask<Object, Void, Void>
 	{
@@ -144,58 +263,21 @@ public class MapActivity extends FragmentActivity {
 		@Override
 		protected Void doInBackground(Object... arg0) {
 			// TODO Auto-generated method stub
-			Session session    = (Session)(arg0[1]);
-			/*Response response = (Response)(arg0[0]);
-			
-			
-		
-			
-			try
-			{
-				JSONObject jsonObject = new JSONObject(response.getGraphObject().getInnerJSONObject().toString());
-				JSONArray friendsId   = jsonObject.optJSONObject("friends").getJSONArray("data");
-			
-				Log.d("Total", "length:::"+friendsId.length());
-				
-				for(int i=0;i<10;i++ )
-				{
-					getResponse((String)friendsId.getJSONObject(i).get("id") , session);
-				}
-				
-			}
-			catch (JSONException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}*/
-			
-			
-			Bundle nameBundle   = new Bundle();
-			nameBundle.putString("fields", "friends.fields(id)");
-			
-			try {
-				newMethod(mID,nameBundle,session.getAccessToken());
-			} catch (ClientProtocolException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				showErrorDialog();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				showErrorDialog();
-			} catch (JSONException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-				showErrorDialog();
-			}
-		
-			
+			Session localSession = (Session)(arg0[1]);
 			return null;
 		}
 
 		@Override
 		protected void onPostExecute(Void nothing) {
 			// TODO Auto-generated method stub
-			
+
+			mapData();
+
+		}
+		
+		
+		private void mapData()
+		{
 			if(mFreindsData == null || mFreindsData.size() < 0)
 				return ;
 			int size = mFreindsData.size();
@@ -207,13 +289,12 @@ public class MapActivity extends FragmentActivity {
 
 				BitmapDescriptor icon = BitmapDescriptorFactory.fromBitmap((Bitmap)data.get("image"));
 
+
 				
-				mMap.addMarker(new MarkerOptions().position(position).icon(icon));
 			}
-		
 		}
-		
-	
+
+
 
 		private void getClosure(LatLng position)
 		{
@@ -225,22 +306,24 @@ public class MapActivity extends FragmentActivity {
 
 					));
 		}
+
 		
+
 		private void getResponse(final String id , final Session session)
 		{
 			Bundle details = new Bundle();
 
-			
+
 			details.putString("fields", "picture,location");
-		
+
 			new Request(session, id ,details,HttpMethod.GET ,new Callback() {
 
 				@Override
 				public void onCompleted(Response response) {
 					// TODO Auto-generated method stub
-					
+
 					JSONObject jsonObject;
-					
+
 					try {
 						jsonObject = new JSONObject(response.getGraphObject().getInnerJSONObject().toString());
 						String url = jsonObject.optJSONObject("picture").optJSONObject("data").getString("url");
@@ -255,20 +338,22 @@ public class MapActivity extends FragmentActivity {
 						}
 						else
 						{
-							
+
 						}
 					} catch (JSONException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
-					
+
 				}
-				
+
 			}).executeAndWait();
-			
-		
+
+
 		}
+
 		
+
 		private LatLng getLocation(String graphPath,Session session)
 		{
 			Bundle location = new Bundle();
