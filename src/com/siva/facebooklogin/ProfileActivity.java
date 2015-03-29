@@ -1,12 +1,7 @@
 package com.siva.facebooklogin;
 
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLConnection;
+
 import java.util.HashMap;
 
 import org.json.JSONException;
@@ -15,10 +10,8 @@ import org.json.JSONObject;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -40,9 +33,11 @@ import com.facebook.Session;
 public class ProfileActivity extends Activity implements OnClickListener{
 
 
+	public static final String LOCATIONID = "locationID";
+	
 	ImageView mProfileImage;
 	TextView mFirstName,mLastName;
-	String mID= null;
+	String mLocationID = null;
 	ProgressBar mProgressbar;
 	LinearLayout mImageFrame;
 	Button mLocateFriends;
@@ -59,11 +54,11 @@ public class ProfileActivity extends Activity implements OnClickListener{
 		mProgressbar  = (ProgressBar)(findViewById(R.id.progressBar));
 		mImageFrame   = (LinearLayout)(findViewById(R.id.image_frame));
 		mLocateFriends = (Button)(findViewById(R.id.locatefriends));
-		
+
 		Session session = Session.getActiveSession();
 		Bundle nameBundle   = new Bundle();
-		nameBundle.putString("fields", "first_name,middle_name,last_name,picture.width(200).height(200)");
-		
+		nameBundle.putString("fields", "first_name,middle_name,last_name,picture.width(200).height(200),location");
+
 		if(mDownloadTask == null)
 		{
 			mDownloadTask = new DownloadTask();
@@ -76,19 +71,14 @@ public class ProfileActivity extends Activity implements OnClickListener{
 				@Override
 				public void onCompleted(Response response) {
 					// TODO Auto-generated method stub
-					try {
-
-						
+					try {	
 						JSONObject jsonObject = new JSONObject(response.getGraphObject().getInnerJSONObject().toString());
-
-						mID = jsonObject.getString("id");
-						Log.d("ProfileActivity", "response::"+mID);
-						
-
+						mLocationID = jsonObject.optJSONObject("location").getString("id");
 						mDownloadTask.execute(jsonObject.optJSONObject("picture").optJSONObject("data").getString("url"),jsonObject.getString("first_name"),jsonObject.getString("last_name"));
 					} catch (JSONException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
+						Toast.makeText(getBaseContext(), "Some Error Came", Toast.LENGTH_LONG).show();
 					}
 				}
 			}).executeAsync();
@@ -107,18 +97,13 @@ public class ProfileActivity extends Activity implements OnClickListener{
 			// TODO Auto-generated method stub
 
 			HashMap<String,Object> data = new HashMap<String, Object>();
-
-
-			Log.d("ProfileActivity", "string :"+arg0[0]);
-
-			Bitmap image = getImage(arg0[0]);
+			Bitmap image = Utility.getBitmap(arg0[0]);
 			data.put("image", image);
 			data.put("firstname", arg0[1]);
 			data.put("lastname", arg0[2]);
+			mFirstName.setText(arg0[1]);
 			return data;    
 		}
-
-
 
 
 		@Override
@@ -136,9 +121,9 @@ public class ProfileActivity extends Activity implements OnClickListener{
 			{
 
 				mProfileImage.setImageBitmap((Bitmap)data.get("image"));
-				mFirstName.setText((String)data.get("firstname"));
+				
 				mLastName.setText((String)data.get("lastname"));
-           
+
 				setVisibilty(mImageFrame);
 				setVisibilty(mProfileImage);
 				setVisibilty(mLastName);
@@ -184,51 +169,10 @@ public class ProfileActivity extends Activity implements OnClickListener{
 	@Override
 	public void onClick(View view) {
 		// TODO Auto-generated method stub
-
-		Log.d("ProfileActivity",""+view.getId());
-
 		Intent intent = new Intent(ProfileActivity.this, MapActivity.class);
-		intent.putExtra("id", mID);
-
+		intent.putExtra(LOCATIONID, mLocationID);
 		startActivity(intent);
 
 	}
-
-	public static Bitmap getImage(String imageUrl)
-	{
-		long duration = System.currentTimeMillis();
-		Bitmap image = null;
-		InputStream in = null;
-		int response = -1;
-
-		try{
-			URL url = new URL(imageUrl);
-			URLConnection conn = url.openConnection();
-
-			if (!(conn instanceof HttpURLConnection))                    
-				throw new IOException("Not an HTTP connection");
-
-			HttpURLConnection httpConn = (HttpURLConnection) conn;
-			httpConn.setAllowUserInteraction(false);
-			httpConn.setInstanceFollowRedirects(true);
-			httpConn.setRequestMethod("GET");
-			httpConn.connect();
-
-			response = httpConn.getResponseCode();                
-			if (response == HttpURLConnection.HTTP_OK) {
-				in = httpConn.getInputStream();                                
-			}                    
-		}
-		catch (Exception ex)
-		{
-
-		}
-
-		BufferedInputStream bi = new BufferedInputStream(in);
-		image = BitmapFactory.decodeStream(bi);
-        Log.d("TimeTaken", ""+(System.currentTimeMillis()-duration));
-		return image;
-	}
-
 
 }
